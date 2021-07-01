@@ -18,11 +18,15 @@
 
 package org.myorg.quickstart
 
-import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.api.common.serialization.{SimpleStringEncoder, SimpleStringSchema}
+import org.apache.flink.core.fs.Path
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 /**
  * Skeleton for a Flink Streaming Job.
@@ -37,38 +41,44 @@ import java.util.Properties
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
 object StreamingJob {
-  def main(args: Array[String]) {
-    // set up the streaming execution environment
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
 
-    /*
-     * Here, you can start creating your execution plan for Flink.
-     *
-     * Start with getting some data from the environment, like
-     *  env.readTextFile(textPath);
-     *
-     * then, transform the resulting DataStream[String] using operations
-     * like
-     *   .filter()
-     *   .flatMap()
-     *   .join()
-     *   .group()
-     *
-     * and many more.
-     * Have a look at the programming guide:
-     *
-     * https://flink.apache.org/docs/latest/apis/streaming/index.html
-     *
-     */
+  def main(args: Array[String]): Unit = {
+    // set up the streaming execution environment
+
+    val window = Time.of(60, TimeUnit.SECONDS)
+    val outputPath = "output_clicks.txt"
+
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
 
     val properties = new Properties()
     properties.setProperty("bootstrap.servers", "localhost:9092")
     properties.setProperty("group.id", "test")
 
-    val stream = env.addSource(new FlinkKafkaConsumer[String]("displays", new SimpleStringSchema(), properties))
-    // addSource(new FlinkKafkaConsumer[String]("displays", new SimpleStringSchema(), properties)
+    val displaysKafkaConsumer = new FlinkKafkaConsumer[String]("displays", new SimpleStringSchema(), properties)
+    val clicksKafkaConsumer = new FlinkKafkaConsumer[String]("clicks", new SimpleStringSchema(), properties)
 
-    stream.print()
+    val displayStream
+    = env.addSource(displaysKafkaConsumer)
+    val clickStream
+    = env.addSource(clicksKafkaConsumer)
+
+    //val wordCounts = countWords(lines, stopWords, window)
+
+    /*wordCounts
+      .map(_.toString)
+      .addSink(kafkaProducer)
+    */
+
+    clickStream.print()
+    displayStream.print()
+
+    // https://ci.apache.org/projects/flink/flink-docs-release-1.13/docs/connectors/datastream/streamfile_sink/
+    val sink: StreamingFileSink[String] = StreamingFileSink
+      .forRowFormat(new Path(outputPath), new SimpleStringEncoder[String]("UTF-8"))
+      .build()
+
+    clickStream.addSink(sink)
+    clickStream.sinkTo()
 
     // execute program
     env.execute("Flink Streaming Scala API Skeleton")

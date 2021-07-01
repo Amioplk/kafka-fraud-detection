@@ -69,6 +69,18 @@ under the License.
 			<artifactId>flink-connector-kafka_${scala.binary.version}</artifactId>
 			<version>1.12.0</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-walkthrough-common -->
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-walkthrough-common_2.12</artifactId>
+			<version>1.11.2</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-walkthrough-datastream-scala -->
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-walkthrough-datastream-scala</artifactId>
+			<version>1.12.2</version>
+		</dependency>
 		<!-- Scala Library, provided by Flink as well. -->
 		<dependency>
 			<groupId>org.scala-lang</groupId>

@@ -62,6 +62,8 @@
     <orderEntry type="library" name="Maven: org.apache.flink:flink-connector-kafka_2.11:1.12.0" level="project" />
     <orderEntry type="library" name="Maven: org.apache.kafka:kafka-clients:2.4.1" level="project" />
     <orderEntry type="library" name="Maven: com.github.luben:zstd-jni:1.4.3-1" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-walkthrough-common_2.12:1.11.2" level="project" />
+    <orderEntry type="library" name="Maven: org.apache.flink:flink-walkthrough-datastream-scala:1.12.2" level="project" />
     <orderEntry type="library" name="Maven: org.scala-lang:scala-library:2.11.12" level="project" />
     <orderEntry type="library" name="Maven: org.apache.logging.log4j:log4j-slf4j-impl:2.12.1" level="project" />
     <orderEntry type="library" name="Maven: org.apache.logging.log4j:log4j-api:2.12.1" level="project" />
