@@ -1,0 +1,5 @@
+-> Click sans Display
+-> Différence entre timestamp du Click et du Display
+-> Duplicates et fuzzy duplicates : avec les adresses IP
+
+PS : à la fin on doit avoir 10% de click rate
