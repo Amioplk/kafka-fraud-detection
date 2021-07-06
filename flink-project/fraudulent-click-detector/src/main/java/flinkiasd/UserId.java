@@ -1,12 +1,12 @@
 package flinkiasd;
 
-public class AlertUid {
+public class UserId {
     public String uid;
 
-    public AlertUid() {
+    public UserId() {
 
     }
-    public AlertUid(String uid) {
+    public UserId(String uid) {
         this.uid = uid;
     }
 

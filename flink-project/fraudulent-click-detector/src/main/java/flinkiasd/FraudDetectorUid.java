@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 /**
  * Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
  */
-public class FraudDetectorUid extends KeyedProcessFunction<String, Event, AlertUid> {
+public class FraudDetectorUid extends KeyedProcessFunction<String, Event, UserId> {
 
     private static final int THRESHOLD = 40;
 
@@ -73,7 +73,7 @@ public class FraudDetectorUid extends KeyedProcessFunction<String, Event, AlertU
      * Remove UIDs which the number of clicks per quarter-hour is more than a threshold
      */
     @Override
-    public void processElement(Event event,Context context,Collector<AlertUid> collector) throws Exception {
+    public void processElement(Event event,Context context,Collector<UserId> collector) throws Exception {
 
         //init variables
         if(timestamp_start <= 0.0) {
@@ -153,7 +153,7 @@ public class FraudDetectorUid extends KeyedProcessFunction<String, Event, AlertU
 
                     if (((List<Long>) clickStateQuarter.get()).size() > 0 && ((List<Long>) displayStateQuarter.get()).size() == 0) {
                         if(!uids_to_remove.contains(event.getUid())){
-                            AlertUid alert = new AlertUid();
+                            UserId alert = new UserId();
                             alert.setUid(event.getUid());
                             collector.collect(alert); //Send alert to the collector
                             uids_to_remove.add(event.getUid());
@@ -167,7 +167,7 @@ public class FraudDetectorUid extends KeyedProcessFunction<String, Event, AlertU
                      */
                     if (count > THRESHOLD){ //fraudulent UID
                         if(!uids_to_remove.contains(event.getUid())){
-                            AlertUid alert = new AlertUid();
+                            UserId alert = new UserId();
                             alert.setUid(event.getUid());
                             collector.collect(alert); //Send alert to the collector
                             uids_to_remove.add(event.getUid());

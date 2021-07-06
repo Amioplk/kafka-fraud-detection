@@ -20,13 +20,16 @@ package flinkiasd;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
+import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import static org.apache.flink.core.fs.FileSystem.WriteMode.OVERWRITE;
 
 
 /**
@@ -50,28 +53,54 @@ public class StreamingJob {
 
 		//Transform a Kafka source of clicks and displays to a DataStream of Event (java object)
 		DataStream<Event> events = env.addSource(new FlinkKafkaConsumer<>(topics, new DeserializationToEventSchema(), properties)).setParallelism(1);
+		DataStream<Event> datastream = events.assignTimestampsAndWatermarks(new AssignerWithPunctuatedWatermarks<Event>() {
 
-		//Fraud detector of UID which clicks too often
+			@Override
+			public long extractTimestamp(Event event, long l) {
+				return event.getTimestamp();
+			}
+
+			@Nullable
+			@Override
+			public Watermark checkAndGetNextWatermark(Event event, long l) {
+				return new Watermark(l);
+			}
+		});
+
+		//Fraud detector of duplicate UIDs which clicks too often
 		FraudDetectorUid detectorUid = new FraudDetectorUid();
 		//Fraud detector of IP which clicks too often
 		FraudDetectorIp detectorIp = new FraudDetectorIp();
+		//Fraud detector of clicks that have no corresponding display
+		ClickWithoutDisplayWindowFunction detectorClickWithoutDisplay = new ClickWithoutDisplayWindowFunction();
 
+		/*
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
-		DataStream<AlertUid> alertsUid = events
+		DataStream<UserId> alertsUid = events
 				.keyBy(Event::getUid)
 				.process(detectorUid)
 				.name("fraud-detector-uid")
 				.setParallelism(1);
 
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
-		DataStream<AlertIp> alertsIp = events
+		DataStream<IpAdress> alertsIp = events
 				.keyBy(Event::getIp)
 				.process(detectorIp)
 				.name("fraud-detector-ip")
 				.setParallelism(1);
+		*/
 
-		alertsUid.print();
-		alertsIp.print();
+		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
+		DataStream<String> streamClickWithoutDisplay = datastream
+				.keyBy(Event::getImpressionId)
+				.window(TumblingEventTimeWindows.of(Time.seconds(15)))
+				.apply(detectorClickWithoutDisplay)
+				.name("fraud-detector-impressionId")
+				.setParallelism(1);
+
+		//alertsUid.print();
+		//alertsIp.print();
+		streamClickWithoutDisplay.print();
 
 		//alertsUid.writeAsText("./outputs/uid_alert.txt",OVERWRITE);
 		//alertsIp.writeAsText("./outputs/ip_alert.txt",OVERWRITE);

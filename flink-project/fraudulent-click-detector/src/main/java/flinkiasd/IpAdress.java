@@ -1,12 +1,12 @@
 package flinkiasd;
 
-public class AlertIp {
+public class IpAdress {
     public String ip;
 
-    public AlertIp() {
+    public IpAdress() {
 
     }
-    public AlertIp(String ip) {
+    public IpAdress(String ip) {
         this.ip = ip;
     }
 

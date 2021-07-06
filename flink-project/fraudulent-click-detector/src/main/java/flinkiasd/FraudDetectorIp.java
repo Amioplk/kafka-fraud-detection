@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
  */
-public class FraudDetectorIp extends KeyedProcessFunction<String, Event, AlertIp> {
+public class FraudDetectorIp extends KeyedProcessFunction<String, Event, IpAdress> {
 
     private static final int THRESHOLD = 10;
 
@@ -52,7 +52,7 @@ public class FraudDetectorIp extends KeyedProcessFunction<String, Event, AlertIp
     public void processElement(
             Event event,
             Context context,
-            Collector<AlertIp> collector) throws Exception {
+            Collector<IpAdress> collector) throws Exception {
 
         if(event.getEventType().equals("click") || event.getEventType().equals("display")){
 
@@ -102,8 +102,8 @@ public class FraudDetectorIp extends KeyedProcessFunction<String, Event, AlertIp
                     if (count > THRESHOLD) {
 
                         if(!ip_to_remove.contains(event.getIp())){
-                            AlertIp alert = new AlertIp();
-                            alert.setIp(event.getIp());
+                            IpAdress alert = new IpAdress();
+                            alert.setIp(event.getIp()); // UTILISER LE CONSTRUCTEUUUUUUR
                             collector.collect(alert); //Send alert to the collector if never sent before
                             ip_to_remove.add(event.getIp());
                         }

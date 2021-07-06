@@ -35,14 +35,6 @@ public class Event {
         return impressionId;
     }
 
-    public Event(String eventType, String uid, Long timestamp, String ip, String impressionId) {
-        this.eventType = eventType;
-        this.uid = uid;
-        this.timestamp = timestamp;
-        this.ip = ip;
-        this.impressionId = impressionId;
-    }
-
     public Event(String eventStr) throws ParseException {
         JSONParser parser = new JSONParser();
         JSONObject json = (JSONObject) parser.parse(eventStr);
