@@ -72,7 +72,7 @@ public class StreamingJob {
 		//Fraud detector of IP which clicks too often
 		FraudDetectorIp detectorIp = new FraudDetectorIp();
 		//Fraud detector of clicks that have no corresponding display
-		ClickWithoutDisplayWindowFunction detectorClickWithoutDisplay = new ClickWithoutDisplayWindowFunction();
+		ClickWithoutDisplayDetector detectorClickWithoutDisplay = new ClickWithoutDisplayDetector();
 
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
 		DataStream<UserId> alertsUid = events
@@ -89,10 +89,9 @@ public class StreamingJob {
 				.setParallelism(1);
 
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
-		DataStream<Integer> streamClickWithoutDisplay = datastream
+		DataStream<Event> streamClickWithoutDisplay = datastream
 				.keyBy(Event::getImpressionId)
-				.window(TumblingEventTimeWindows.of(Time.seconds(15)))
-				.apply(detectorClickWithoutDisplay)
+				.process(detectorClickWithoutDisplay)
 				.name("fraud-detector-impressionId")
 				.setParallelism(1);
 

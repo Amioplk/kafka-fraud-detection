@@ -7,9 +7,8 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Event, Event> {
 
@@ -18,8 +17,12 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
      */
     private transient MapState<String,Integer> pendingDisplayState;
 
-    //List of fraudulent UIDs to remove
     private List<String> impressionIdsToRemove = new ArrayList<>();
+
+    private final int windowSize = 15*60;
+
+    private long beginTimestamp = (long) -1.0;
+    private long endingTimestamp = (long) -1.0;
 
     @Override
     public void open(Configuration parameters) {
@@ -33,29 +36,49 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
     @Override
     public void processElement(Event event, Context context, Collector<Event> collector) throws Exception {
 
-        if(event.getEventType().equals("click") || event.getEventType().equals("display")) {
+        if(beginTimestamp <= 0.0) {
+            beginTimestamp = event.getTimestamp();
+        }
+
+        if(endingTimestamp <= event.getTimestamp()) {
+            endingTimestamp = event.getTimestamp();
+        }
+
+        if(endingTimestamp - beginTimestamp >= windowSize) {
+            //reset timestamps
+            beginTimestamp = event.getTimestamp();
+            endingTimestamp = event.getTimestamp();
+        }
+
+        while(true) {
 
             String eventImpressionId = event.getImpressionId();
 
             if (event.getEventType().equals("display")) {
                 if (pendingDisplayState.contains(eventImpressionId)) {
                     pendingDisplayState.put(eventImpressionId, pendingDisplayState.get(eventImpressionId) + 1);
-                }
-                else {
+                } else {
                     pendingDisplayState.put(eventImpressionId, 1);
                 }
             } else {
                 if (pendingDisplayState.contains(eventImpressionId)) {
-                    if (pendingDisplayState.get(eventImpressionId) <= 0){
-                        impressionIdsToRemove.add(eventImpressionId);
+                    if (pendingDisplayState.get(eventImpressionId) <= 0) {
+                        if(!impressionIdsToRemove.contains(eventImpressionId)) {
+                            impressionIdsToRemove.add(eventImpressionId);
+                            collector.collect(event);
+                        }
                     } else {
                         pendingDisplayState.put(eventImpressionId, pendingDisplayState.get(eventImpressionId) - 1);
                     }
-                }
-                else {
-                    impressionIdsToRemove.add(eventImpressionId);
+                } else {
+                    if(!impressionIdsToRemove.contains(eventImpressionId)) {
+                        impressionIdsToRemove.add(eventImpressionId);
+                        collector.collect(event);
+                    }
                 }
             }
+
+            break;
         }
     }
 
