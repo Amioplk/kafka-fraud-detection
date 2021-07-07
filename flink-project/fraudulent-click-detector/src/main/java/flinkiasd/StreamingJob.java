@@ -74,7 +74,6 @@ public class StreamingJob {
 		//Fraud detector of clicks that have no corresponding display
 		ClickWithoutDisplayWindowFunction detectorClickWithoutDisplay = new ClickWithoutDisplayWindowFunction();
 
-		/*
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
 		DataStream<UserId> alertsUid = events
 				.keyBy(Event::getUid)
@@ -88,15 +87,20 @@ public class StreamingJob {
 				.process(detectorIp)
 				.name("fraud-detector-ip")
 				.setParallelism(1);
-		*/
 
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
-		DataStream<String> streamClickWithoutDisplay = datastream
+		DataStream<Integer> streamClickWithoutDisplay = datastream
 				.keyBy(Event::getImpressionId)
 				.window(TumblingEventTimeWindows.of(Time.seconds(15)))
 				.apply(detectorClickWithoutDisplay)
 				.name("fraud-detector-impressionId")
 				.setParallelism(1);
+
+		/*
+		System.out.println(
+			datastream.keyBy(Event::getImpressionId).getKeySelector().getKey(new Event("{\"eventType\":\"display\", \"uid\":\"bcb8a8a0-6dc2-4e49-858c-77addbb6bca9\", \"timestamp\":1625652227, \"ip\":\"139.80.254.112\", \"impressionId\": \"6be883d0-8f37-4ef5-b881-3e2989fb38ff\"}"))
+		);
+		*/
 
 		//alertsUid.print();
 		//alertsIp.print();
