@@ -8,7 +8,6 @@ import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Event, Event> {
 
@@ -19,7 +18,7 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
 
     private List<String> impressionIdsToRemove = new ArrayList<>();
 
-    private final int windowSize = 15*60;
+    private final int windowSize = 30*60;
 
     private long beginTimestamp = (long) -1.0;
     private long endingTimestamp = (long) -1.0;
@@ -68,6 +67,7 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
                             collector.collect(event);
                         }
                     } else {
+                        //collector.collect(new Event("{\"eventType\":\"11111111  \", \"uid\":\"4317e35d-4682-4a51-940e-3bcf9cb20ec0\", \"timestamp\":1625692733, \"ip\":\"57.212.4.158\", \"impressionId\": \"8afc5402-1e13-488f-8a0c-db35c9d614a3\"}"));
                         pendingDisplayState.put(eventImpressionId, pendingDisplayState.get(eventImpressionId) - 1);
                     }
                 } else {

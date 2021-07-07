@@ -35,6 +35,10 @@ public class Event {
         return impressionId;
     }
 
+    public Event() {
+
+    }
+
     public Event(String eventStr) throws ParseException {
         JSONParser parser = new JSONParser();
         JSONObject json = (JSONObject) parser.parse(eventStr);

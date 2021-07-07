@@ -18,28 +18,42 @@
 
 package flinkiasd;
 
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.serialization.SimpleStringEncoder;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
+import org.apache.flink.streaming.api.functions.sink.filesystem.StreamingFileSink;
+import org.apache.flink.streaming.api.functions.sink.filesystem.rollingpolicies.DefaultRollingPolicy;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import scala.Int;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 
 /**
- * The goal of the project is to create a Flink application which will read from Kafka clicks and displays, detect some suspicious/fraudulent activities and output the suspicious IP or UID into a file.
+ * Docs
  */
 public class StreamingJob {
 
 	public static void main(String[] args) throws Exception {
 
-		// set up the streaming execution environment
+		// Global parameters
+		Path outputPath = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/all");
+		Path outputPathPattern1 = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/snapshots");
+
+		// Set up the streaming execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
 
 		Properties properties = new Properties();
@@ -51,7 +65,7 @@ public class StreamingJob {
 		topics.add("clicks");
 		topics.add("displays");
 
-		//Transform a Kafka source of clicks and displays to a DataStream of Event (java object)
+		// Connect with Kafka and add Watermarks
 		DataStream<Event> events = env.addSource(new FlinkKafkaConsumer<>(topics, new DeserializationToEventSchema(), properties)).setParallelism(1);
 		DataStream<Event> datastream = events.assignTimestampsAndWatermarks(new AssignerWithPunctuatedWatermarks<Event>() {
 
@@ -67,12 +81,11 @@ public class StreamingJob {
 			}
 		});
 
+		/*
 		//Fraud detector of duplicate UIDs which clicks too often
 		FraudDetectorUid detectorUid = new FraudDetectorUid();
 		//Fraud detector of IP which clicks too often
 		FraudDetectorIp detectorIp = new FraudDetectorIp();
-		//Fraud detector of clicks that have no corresponding display
-		ClickWithoutDisplayDetector detectorClickWithoutDisplay = new ClickWithoutDisplayDetector();
 
 		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
 		DataStream<UserId> alertsUid = events
@@ -87,28 +100,68 @@ public class StreamingJob {
 				.process(detectorIp)
 				.name("fraud-detector-ip")
 				.setParallelism(1);
+		*/
 
-		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
+		//Fraud detector of clicks that have no corresponding display
+		ClickWithoutDisplayDetector detectorClickWithoutDisplay = new ClickWithoutDisplayDetector();
+
+		// Intial Click rate
+		SingleOutputStreamOperator<Tuple2<String, Integer>> clickRate = events.map(new MapFunction<Event, Tuple2<String, Integer>>() {
+			@Override
+			public Tuple2<String, Integer> map(Event event) throws Exception {
+				return new Tuple2<String, Integer>(event.getEventType(), 1);
+			}
+		})
+				.keyBy(x -> x.f0)
+				.reduce((x, y) -> new Tuple2<String, Integer>(x.f0,  x.f1 + y.f1));
+
+		// Pattern 1 - Clicks without display
 		DataStream<Event> streamClickWithoutDisplay = datastream
 				.keyBy(Event::getImpressionId)
 				.process(detectorClickWithoutDisplay)
 				.name("fraud-detector-impressionId")
 				.setParallelism(1);
 
-		/*
-		System.out.println(
-			datastream.keyBy(Event::getImpressionId).getKeySelector().getKey(new Event("{\"eventType\":\"display\", \"uid\":\"bcb8a8a0-6dc2-4e49-858c-77addbb6bca9\", \"timestamp\":1625652227, \"ip\":\"139.80.254.112\", \"impressionId\": \"6be883d0-8f37-4ef5-b881-3e2989fb38ff\"}"))
-		);
-		*/
+		// Create sinks
+		final StreamingFileSink<Event> sinkPattern1 = StreamingFileSink
+				.forRowFormat(outputPathPattern1, new SimpleStringEncoder<Event>("UTF-8"))
+				.withRollingPolicy(
+						DefaultRollingPolicy.builder()
+								.withRolloverInterval(TimeUnit.MINUTES.toMillis(15))
+								.withInactivityInterval(TimeUnit.MINUTES.toMillis(5))
+								.withMaxPartSize(1024 * 1024 * 1024)
+								.build())
+				.build();
+		final StreamingFileSink<Event> sink = StreamingFileSink
+				.forRowFormat(outputPath, new SimpleStringEncoder<Event>("UTF-8"))
+				.withRollingPolicy(
+						DefaultRollingPolicy.builder()
+								.withRolloverInterval(TimeUnit.MINUTES.toMillis(15))
+								.withInactivityInterval(TimeUnit.MINUTES.toMillis(5))
+								.withMaxPartSize(1024 * 1024 * 1024)
+								.build())
+				.build();
+
+		SingleOutputStreamOperator<Tuple2<String, Integer>> clickRatePattern1 = streamClickWithoutDisplay.map(new MapFunction<Event, Tuple2<String, Integer>>() {
+			@Override
+			public Tuple2<String, Integer> map(Event event) throws Exception {
+				return new Tuple2<String, Integer>(event.getEventType(), 1);
+			}
+		})
+				.keyBy(x -> x.f0)
+				.reduce((x, y) -> new Tuple2<String, Integer>(x.f0,  x.f1 + y.f1));
+
+		// Add sinks
+		//events.addSink(sink);
+		//streamClickWithoutDisplay.addSink(sinkPattern1);
 
 		//alertsUid.print();
 		//alertsIp.print();
-		streamClickWithoutDisplay.print();
+		//streamClickWithoutDisplay.print();
+		clickRate.print();
+		clickRatePattern1.print();
 
-		//alertsUid.writeAsText("./outputs/uid_alert.txt",OVERWRITE);
-		//alertsIp.writeAsText("./outputs/ip_alert.txt",OVERWRITE);
-		//events.writeAsText("./outputs/events.txt",OVERWRITE);
-		// execute program
+		// Execute
 		env.execute("Flink Streaming Java API to detect fraudulent clicks in ads.");
 	}
 }
