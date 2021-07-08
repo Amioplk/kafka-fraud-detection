@@ -10,6 +10,13 @@ import org.apache.flink.util.Collector;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * --- PATTERN 2 ---
+ *
+ * Class that collects the clicks that have a timestamp that is too close to their corresponding display.
+ *
+ * Note : Class aimed to be used in the method KeyedStream.process()
+ */
 public class TooQuickClickDetector extends KeyedProcessFunction<String, Event, Event> {
 
     /**
@@ -17,7 +24,11 @@ public class TooQuickClickDetector extends KeyedProcessFunction<String, Event, E
      */
     private transient MapState<String,Long> lastDisplayState;
 
+    /**
+     * Window size in seconds of our hand-made window
+     */
     private final int windowSize = 30*60;
+
     private final int humanThreshold = 2;
 
     private long beginTimestamp = (long) -1.0;

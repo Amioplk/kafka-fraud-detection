@@ -1,6 +1,6 @@
 -> Click sans Display "OK"
 -> Différence entre timestamp du Click et du Display "OK"
 -> Duplicates et fuzzy duplicates : avec les adresses IP (à partir d un certain nombre de clicks/displays ?)
-
+    ** Does every counted click have to correspond to a display ?
 
 PS : à la fin on doit avoir 10% de click rate

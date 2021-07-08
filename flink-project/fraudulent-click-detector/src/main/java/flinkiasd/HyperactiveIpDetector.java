@@ -11,6 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
 
+/**
+ * --- PATTERN 3 ---
+ *
+ * Class that collects the clicks that belong to an IP adress having a too big Click Through Rate (CTR).
+ *
+ * Note : Class aimed to be used in the method KeyedStream.process()
+ */
 public class HyperactiveIpDetector extends KeyedProcessFunction<String, Event, Event> {
 
     /**
@@ -27,10 +34,23 @@ public class HyperactiveIpDetector extends KeyedProcessFunction<String, Event, E
      */
     private List<String> ipsToRemove = new ArrayList<>();
 
+    /**
+     * Window size in seconds of our hand-made window
+     */
     private final int windowSize = 30*60;
+
+    /**
+     * Threshold to examine pattern : the minimum number of observed clicks per ip adress
+     */
     private final int clickThreshold = 10;
+    /**
+     * Threshold of the pattern :
+     */
     private final double ctrThreshold = 0.3;
 
+    /**
+     * Bounds to use for our hand-made window
+     */
     private long beginTimestamp = (long) -1.0;
     private long endingTimestamp = (long) -1.0;
 
@@ -74,43 +94,43 @@ public class HyperactiveIpDetector extends KeyedProcessFunction<String, Event, E
         // Save redundant computation
         String eventIp = event.getIp();
 
-        // If ip is already fraudulent
-        if (ipsToRemove.contains(eventIp)){
-            collector.collect(event);
-        }
-        else {
-            // If display : just update the display count
-            if (event.getEventType().equals("display")) {
-                if(displayCountState.contains(eventIp)) {
-                    displayCountState.put(eventIp, displayCountState.get(eventIp) + 1);
-                }
-                else {
-                    displayCountState.put(eventIp,1);
-                }
+        // If display : just update the display count
+        if (event.getEventType().equals("display")) {
+            if(displayCountState.contains(eventIp)) {
+                displayCountState.put(eventIp, displayCountState.get(eventIp) + 1);
             }
-            // If click : update the click count and explore pattern
             else {
-                // Add the click to the click count
-                if(clickCountState.contains(eventIp)) {
-                    clickCountState.put(eventIp, clickCountState.get(eventIp) + 1);
-                }
-                else {
-                    clickCountState.put(eventIp, 1);
-                }
-
-                // Verify that there is enough clicks to compute CTR with some accuracy
-                if (clickCountState.get(eventIp) >= clickThreshold) {
-                    if (displayCountState.contains(eventIp)) {
-                        // If the CTR is too big, collect the event
-                        if (clickCountState.get(eventIp) / displayCountState.get(eventIp) >= ctrThreshold) {
-                            ipsToRemove.add(eventIp);
-                            collector.collect(event);
-                        }
-                    }
-                    // The else case is probably detected by ClickWithoutDisplayDetector : don't do anything here
-                }
+                displayCountState.put(eventIp,1);
             }
         }
+        // If click : update the click count and explore pattern
+        else {
+            // If ip is already fraudulent
+            if (ipsToRemove.contains(eventIp)){
+                collector.collect(event);
+            }
+
+            // Add the click to the click count
+            if(clickCountState.contains(eventIp)) {
+                clickCountState.put(eventIp, clickCountState.get(eventIp) + 1);
+            }
+            else {
+                clickCountState.put(eventIp, 1);
+            }
+
+            // Verify that there is enough clicks to compute CTR with some accuracy
+            if (clickCountState.get(eventIp) >= clickThreshold) {
+                if (displayCountState.contains(eventIp)) {
+                    // If the CTR is too big, collect the event
+                    if (clickCountState.get(eventIp) / displayCountState.get(eventIp) >= ctrThreshold) {
+                        ipsToRemove.add(eventIp);
+                        collector.collect(event);
+                    }
+                }
+                // The else case is probably detected by ClickWithoutDisplayDetector : don't do anything here
+            }
+        }
+
 
     }
 }

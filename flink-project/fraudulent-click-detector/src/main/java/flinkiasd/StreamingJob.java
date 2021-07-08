@@ -24,7 +24,6 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
@@ -34,7 +33,6 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import scala.Int;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -44,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * Docs
+ * Main class to run that reads from a Kafka stream and finds 3 different patterns of suspicious clicks
  */
 public class StreamingJob {
 
@@ -54,10 +52,12 @@ public class StreamingJob {
 		Path outputPath = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/all");
 		Path outputPathPattern1 = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/snapshots_pattern_1");
 		Path outputPathPattern2 = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/snapshots_pattern_2");
+		Path outputPathPattern3 = new Path("/Users/amirworms/Documents/Streaming/kafka-fraud-detection/flink-project/fraudulent-click-detector/outputs/snapshots_pattern_3");
 
 		// Set up the streaming execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
 
+		// Set properties
 		Properties properties = new Properties();
 		properties.setProperty("bootstrap.servers", "localhost:9092");
 		properties.setProperty("zookeeper.connect", "localhost:2181");
@@ -83,34 +83,16 @@ public class StreamingJob {
 			}
 		});
 
-		/*
-		//Fraud detector of duplicate UIDs which clicks too often
-		FraudDetectorUid detectorUid = new FraudDetectorUid();
-		//Fraud detector of IP which clicks too often
-		FraudDetectorIp detectorIp = new FraudDetectorIp();
-
-		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent UIDs
-		DataStream<UserId> alertsUid = events
-				.keyBy(Event::getUid)
-				.process(detectorUid)
-				.name("fraud-detector-uid")
-				.setParallelism(1);
-
-		//Take as input the Event Stream (click or display) and return an Alert Stream of fraudulent IPs
-		DataStream<IpAdress> alertsIp = events
-				.keyBy(Event::getIp)
-				.process(detectorIp)
-				.name("fraud-detector-ip")
-				.setParallelism(1);
-		*/
-
-		//Fraud detector of clicks that have no corresponding display
+		// Fraud detectors
+		// Fraud detector of clicks that have no corresponding display
 		ClickWithoutDisplayDetector detectorClickWithoutDisplay = new ClickWithoutDisplayDetector();
 		// Fraud detector of clicks that are too close in time to their corresponding display
 		TooQuickClickDetector detectorTooQuickClick = new TooQuickClickDetector();
+		// Fraud detector of clicks belonging to ips having a click rate that is too high
+		HyperactiveIpDetector detectorHyperactiveIp = new HyperactiveIpDetector();
 
-		// Intial Click rate
-		SingleOutputStreamOperator<Tuple2<String, Integer>> clickRate = events.map(new MapFunction<Event, Tuple2<String, Integer>>() {
+		// Intial stream sum
+		SingleOutputStreamOperator<Tuple2<String, Integer>> streamSum = events.map(new MapFunction<Event, Tuple2<String, Integer>>() {
 			@Override
 			public Tuple2<String, Integer> map(Event event) throws Exception {
 				return new Tuple2<String, Integer>(event.getEventType(), 1);
@@ -133,7 +115,14 @@ public class StreamingJob {
 				.name("fraud-detector-tooQuickClick")
 				.setParallelism(1);
 
-		// Create sinks
+		// Pattern 3 - Hyperactive IPs
+		DataStream<Event> streamHyperactiveIp = datastream
+				.keyBy(Event::getIp)
+				.process(detectorHyperactiveIp)
+				.name("fraud-detector-hyperactiveIp")
+				.setParallelism(1);
+
+		// Create sinks to files
 		final StreamingFileSink<Event> sinkPattern1 = StreamingFileSink
 				.forRowFormat(outputPathPattern1, new SimpleStringEncoder<Event>("UTF-8"))
 				.withRollingPolicy(
@@ -152,6 +141,15 @@ public class StreamingJob {
 								.withMaxPartSize(1024 * 1024 * 1024)
 								.build())
 				.build();
+		final StreamingFileSink<Event> sinkPattern3 = StreamingFileSink
+				.forRowFormat(outputPathPattern3, new SimpleStringEncoder<Event>("UTF-8"))
+				.withRollingPolicy(
+						DefaultRollingPolicy.builder()
+								.withRolloverInterval(TimeUnit.MINUTES.toMillis(15))
+								.withInactivityInterval(TimeUnit.MINUTES.toMillis(5))
+								.withMaxPartSize(1024 * 1024 * 1024)
+								.build())
+				.build();
 		final StreamingFileSink<Event> sink = StreamingFileSink
 				.forRowFormat(outputPath, new SimpleStringEncoder<Event>("UTF-8"))
 				.withRollingPolicy(
@@ -162,8 +160,8 @@ public class StreamingJob {
 								.build())
 				.build();
 
-		// Click rates of patterns
-		SingleOutputStreamOperator<Tuple3<String, Integer, String>> clickRatePattern1 = streamClickWithoutDisplay.map(new MapFunction<Event, Tuple3<String, Integer, String>>() {
+		// Sum of clicks collected by the different patterns (contains overlap)
+		SingleOutputStreamOperator<Tuple3<String, Integer, String>> sumPattern1 = streamClickWithoutDisplay.map(new MapFunction<Event, Tuple3<String, Integer, String>>() {
 			@Override
 			public Tuple3<String, Integer, String> map(Event event) throws Exception {
 				return new Tuple3<String, Integer, String>(event.getEventType(), 1, "Pattern 1");
@@ -171,7 +169,7 @@ public class StreamingJob {
 		})
 				.keyBy(x -> x.f0)
 				.reduce((x, y) -> new Tuple3<String, Integer, String>(x.f0,  x.f1 + y.f1, x.f2));
-		SingleOutputStreamOperator<Tuple3<String, Integer, String>> clickRatePattern2 = streamTooQuickClick.map(new MapFunction<Event, Tuple3<String, Integer, String>>() {
+		SingleOutputStreamOperator<Tuple3<String, Integer, String>> sumPattern2 = streamTooQuickClick.map(new MapFunction<Event, Tuple3<String, Integer, String>>() {
 			@Override
 			public Tuple3<String, Integer, String> map(Event event) throws Exception {
 				return new Tuple3<String, Integer, String>(event.getEventType(), 1, "Pattern 2");
@@ -179,19 +177,31 @@ public class StreamingJob {
 		})
 				.keyBy(x -> x.f0)
 				.reduce((x, y) -> new Tuple3<String, Integer, String>(x.f0,  x.f1 + y.f1, x.f2));
+		SingleOutputStreamOperator<Tuple3<String, Integer, String>> sumPattern3 = streamHyperactiveIp.map(new MapFunction<Event, Tuple3<String, Integer, String>>() {
+			@Override
+			public Tuple3<String, Integer, String> map(Event event) throws Exception {
+				return new Tuple3<String, Integer, String>(event.getEventType(), 1, "Pattern 3");
+			}
+		})
+				.keyBy(x -> x.f0)
+				.reduce((x, y) -> new Tuple3<String, Integer, String>(x.f0,  x.f1 + y.f1, x.f2));
 
 		// Add sinks
-		//events.addSink(sink);
-		//streamClickWithoutDisplay.addSink(sinkPattern1);
-		//streamTooQuickClick.addSink(sinkPattern2);
+		events.addSink(sink);
+		streamClickWithoutDisplay.addSink(sinkPattern1);
+		streamTooQuickClick.addSink(sinkPattern2);
+		streamHyperactiveIp.addSink(sinkPattern3);
 
-		//alertsUid.print();
-		//alertsIp.print();
+		// Print patterns' output
 		//streamClickWithoutDisplay.print();
 		//streamTooQuickClick.print();
-		clickRate.print();
-		clickRatePattern1.print();
-		clickRatePattern2.print();
+		//streamHyperactiveIp.print();
+
+		// Print the sum of clicks and displays after every event (for debugging)
+		streamSum.print();
+		sumPattern1.print();
+		sumPattern2.print();
+		sumPattern3.print();
 
 		// Execute
 		env.execute("Flink Streaming Java API to detect fraudulent clicks in ads.");

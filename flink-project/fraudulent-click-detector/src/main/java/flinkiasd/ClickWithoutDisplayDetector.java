@@ -9,6 +9,13 @@ import org.apache.flink.util.Collector;
 
 import java.util.*;
 
+/**
+ * --- PATTERN 1 ---
+ *
+ * Class that collects the clicks that do not have a display with the same uid beforehand.
+ *
+ * Note : Class aimed to be used in the method KeyedStream.process()
+ */
 public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Event, Event> {
 
     /**
@@ -21,8 +28,14 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
      */
     private List<String> uIdsToRemove = new ArrayList<>();
 
+    /**
+     * Window size in seconds of our hand-made window
+     */
     private final int windowSize = 30*60;
 
+    /**
+     * Bounds to use for our hand-made window
+     */
     private long beginTimestamp = (long) -1.0;
     private long endingTimestamp = (long) -1.0;
 
@@ -38,14 +51,17 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
     @Override
     public void processElement(Event event, Context context, Collector<Event> collector) throws Exception {
 
+        // Initialize lower bound
         if(beginTimestamp <= 0.0) {
             beginTimestamp = event.getTimestamp();
         }
 
-        if(endingTimestamp <= event.getTimestamp()) {
+        // Update upper bound
+        if(endingTimestamp < event.getTimestamp()) {
             endingTimestamp = event.getTimestamp();
         }
 
+        // End of the tumbling window
         if(endingTimestamp - beginTimestamp >= windowSize) {
             //reset timestamps
             beginTimestamp = event.getTimestamp();
@@ -58,23 +74,29 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
         // Save redundant computation
         String eventUid = event.getUid();
 
+        // If display : increment the number of pending displays for the current uid
         if (event.getEventType().equals("display")) {
             if (pendingDisplayState.contains(eventUid)) {
                 pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) + 1);
             } else {
                 pendingDisplayState.put(eventUid, 1);
             }
-        } else {
+        }
+        // If click :
+        else {
+            // If uid is already identified as fraudulent : collect the click
             if(uIdsToRemove.contains(eventUid)){
                 collector.collect(event);
             }
             else{
                 if (pendingDisplayState.contains(eventUid)) {
+                    // If there is no pending display : collect the click
                     if (pendingDisplayState.get(eventUid) <= 0) {
                         uIdsToRemove.add(eventUid);
                         collector.collect(event);
-                    } else {
-                        //collector.collect(new Event("{\"eventType\":\"11111111  \", \"uid\":\"4317e35d-4682-4a51-940e-3bcf9cb20ec0\", \"timestamp\":1625692733, \"ip\":\"57.212.4.158\", \"impressionId\": \"8afc5402-1e13-488f-8a0c-db35c9d614a3\"}"));
+                    }
+                    // If there is at least 1 pending display : decrement pending displays for this uid
+                    else {
                         pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) - 1);
                     }
                 } else {

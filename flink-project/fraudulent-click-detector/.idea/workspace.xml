@@ -4,13 +4,29 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="64240200-5302-4795-96fe-f3b01370ddc2" name="Default Changelist" comment="Add Maven things">
-      <change afterPath="$PROJECT_DIR$/src/main/java/flinkiasd/HyperactiveIpDetector.java" afterDir="false" />
+    <list default="true" id="64240200-5302-4795-96fe-f3b01370ddc2" name="Default Changelist" comment="Begin Pattern 3">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/ClickWithoutDisplayDetector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/flinkiasd/ClickWithoutDisplayDetector.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/ClickWithoutDisplayWindowFunction.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/FraudDetectorIp.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/FraudDetectorUid.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/HyperactiveIpDetector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/flinkiasd/HyperactiveIpDetector.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/IpAdress.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/StreamingJob.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/flinkiasd/StreamingJob.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/TooQuickClickDetector.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/flinkiasd/TooQuickClickDetector.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/flinkiasd/UserId.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/ClickWithoutDisplayDetector.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/ClickWithoutDisplayDetector.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/ClickWithoutDisplayWindowFunction.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/FraudDetectorIp.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/FraudDetectorUid.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/IpAdress.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$2.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$2.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$3.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$3.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$4.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob$4.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/StreamingJob.class" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/TooQuickClickDetector.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/flinkiasd/TooQuickClickDetector.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/flinkiasd/UserId.class" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../quickstart/notes.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../../quickstart/notes.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,7 +162,14 @@
       <option name="project" value="LOCAL" />
       <updated>1625739051198</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Begin Pattern 3">
+      <created>1625741731546</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1625741731546</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -170,6 +193,7 @@
     <MESSAGE value="add sinks and compute click rates" />
     <MESSAGE value="Pattern 2 - Too Quick Clicks" />
     <MESSAGE value="Add Maven things" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Maven things" />
+    <MESSAGE value="Begin Pattern 3" />
+    <option name="LAST_COMMIT_MESSAGE" value="Begin Pattern 3" />
   </component>
 </project>
