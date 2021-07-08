@@ -16,6 +16,9 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
      */
     private transient MapState<String,Integer> pendingDisplayState;
 
+    /**
+     * Once the Uid is considered suspicious, collect it
+     */
     private List<String> uIdsToRemove = new ArrayList<>();
 
     private final int windowSize = 30*60;
@@ -52,18 +55,20 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
             pendingDisplayState.clear();
         }
 
-        while(true) {
+        // Save redundant computation
+        String eventUid = event.getUid();
 
-            // Save redundant computation
-            String eventUid = event.getUid();
-
-            if (event.getEventType().equals("display")) {
-                if (pendingDisplayState.contains(eventUid)) {
-                    pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) + 1);
-                } else {
-                    pendingDisplayState.put(eventUid, 1);
-                }
+        if (event.getEventType().equals("display")) {
+            if (pendingDisplayState.contains(eventUid)) {
+                pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) + 1);
             } else {
+                pendingDisplayState.put(eventUid, 1);
+            }
+        } else {
+            if(uIdsToRemove.contains(eventUid)){
+                collector.collect(event);
+            }
+            else{
                 if (pendingDisplayState.contains(eventUid)) {
                     if (pendingDisplayState.get(eventUid) <= 0) {
                         uIdsToRemove.add(eventUid);
@@ -77,8 +82,6 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
                     collector.collect(event);
                 }
             }
-
-            break;
         }
     }
 

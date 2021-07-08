@@ -53,27 +53,22 @@ public class TooQuickClickDetector extends KeyedProcessFunction<String, Event, E
             lastDisplayState.clear();
         }
 
-        while(true) {
+        // Save redundant computation
+        String eventImpressionId = event.getImpressionId();
+        Long eventTimestamp = event.getTimestamp();
 
-            // Save redundant computation
-            String eventImpressionId = event.getImpressionId();
-            Long eventTimestamp = event.getTimestamp();
-
-            // If display : just update last timestamp
-            if (event.getEventType().equals("display")) {
-                lastDisplayState.put(eventImpressionId, eventTimestamp);
-            }
-            // If click : verify that the click is not too quick after the display
-            else {
-                if (lastDisplayState.contains(eventImpressionId)) {
-                    if (lastDisplayState.get(eventImpressionId) - eventTimestamp < humanThreshold) {
-                        collector.collect(event);
-                    }
+        // If display : just update last timestamp
+        if (event.getEventType().equals("display")) {
+            lastDisplayState.put(eventImpressionId, eventTimestamp);
+        }
+        // If click : verify that the click is not too quick after the display
+        else {
+            if (lastDisplayState.contains(eventImpressionId)) {
+                if (lastDisplayState.get(eventImpressionId) - eventTimestamp < humanThreshold) {
+                    collector.collect(event);
                 }
-                // The else case is probably detected by ClickWithoutDisplayDetector
             }
-
-            break;
+            // The else case is probably detected by ClickWithoutDisplayDetector : don't do anything here
         }
 
     }
