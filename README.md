@@ -1,17 +1,9 @@
-# Data Flow
+## How to run our project ?
 
-![Alt text](criteo_lab.PNG?raw=true "Title")
+1. clone this repo locally
+2. From your terminal, execute `docker-compose rm -f; docker-compose up` to start the streaming data of advertising events
+3. Run kafka-fraud-detection/flink-project/fraudulent-click-detector/src/main/java/flinkiasd/StreamingJob.java
+4. Run move output_files.sh to get the output of the initial_stream and our 3 patterns in manageable files
+5. Run streaming_data_report.ipynb to get the click through rate after dropping the clicks identified by the patterns
 
-## Course 
-
-This course, taught by Criteo,  aims to understand the role of the container. It also presents several knowledges on distributed architecture.
-It deals with batch and streaming data flow. The technology used are Flink, Kafka and two programmation languages were 
-used : scala and javascript.
-
-## Project
-
-This project was written by Olivier Randavel and Louis Fontaine
-The goal of this school project is to detect anomalies from advertising events (clicks & displays) from Criteo data, 
-using a streaming flow from Kafka and creating a real-time alerting job with Flink.
-
-This project was graded 17.5/20
+Note that the quickstart directory is just an archive of our tests on scala. The real work is in "flink-project" directory.
