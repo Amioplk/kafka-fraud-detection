@@ -16,7 +16,7 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
      */
     private transient MapState<String,Integer> pendingDisplayState;
 
-    private List<String> impressionIdsToRemove = new ArrayList<>();
+    private List<String> uIdsToRemove = new ArrayList<>();
 
     private final int windowSize = 30*60;
 
@@ -47,34 +47,34 @@ public class ClickWithoutDisplayDetector extends KeyedProcessFunction<String, Ev
             //reset timestamps
             beginTimestamp = event.getTimestamp();
             endingTimestamp = event.getTimestamp();
+
+            // reset map
+            pendingDisplayState.clear();
         }
 
         while(true) {
 
-            String eventImpressionId = event.getImpressionId();
+            // Save redundant computation
+            String eventUid = event.getUid();
 
             if (event.getEventType().equals("display")) {
-                if (pendingDisplayState.contains(eventImpressionId)) {
-                    pendingDisplayState.put(eventImpressionId, pendingDisplayState.get(eventImpressionId) + 1);
+                if (pendingDisplayState.contains(eventUid)) {
+                    pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) + 1);
                 } else {
-                    pendingDisplayState.put(eventImpressionId, 1);
+                    pendingDisplayState.put(eventUid, 1);
                 }
             } else {
-                if (pendingDisplayState.contains(eventImpressionId)) {
-                    if (pendingDisplayState.get(eventImpressionId) <= 0) {
-                        if(!impressionIdsToRemove.contains(eventImpressionId)) {
-                            impressionIdsToRemove.add(eventImpressionId);
-                            collector.collect(event);
-                        }
+                if (pendingDisplayState.contains(eventUid)) {
+                    if (pendingDisplayState.get(eventUid) <= 0) {
+                        uIdsToRemove.add(eventUid);
+                        collector.collect(event);
                     } else {
                         //collector.collect(new Event("{\"eventType\":\"11111111  \", \"uid\":\"4317e35d-4682-4a51-940e-3bcf9cb20ec0\", \"timestamp\":1625692733, \"ip\":\"57.212.4.158\", \"impressionId\": \"8afc5402-1e13-488f-8a0c-db35c9d614a3\"}"));
-                        pendingDisplayState.put(eventImpressionId, pendingDisplayState.get(eventImpressionId) - 1);
+                        pendingDisplayState.put(eventUid, pendingDisplayState.get(eventUid) - 1);
                     }
                 } else {
-                    if(!impressionIdsToRemove.contains(eventImpressionId)) {
-                        impressionIdsToRemove.add(eventImpressionId);
-                        collector.collect(event);
-                    }
+                    uIdsToRemove.add(eventUid);
+                    collector.collect(event);
                 }
             }
 
